@@ -32,6 +32,12 @@ from datetime import datetime, timezone
 import requests
 import pandas as pd
 
+try:
+    import yfinance as yf
+except Exception:
+    yf = None  # type: ignore
+
+
 # =========================
 # 時區設定（處理 tzdata 缺失情況）
 # =========================
@@ -83,6 +89,13 @@ SHEET_SNAPSHOTS = "snapshots"
 SHEET_LAST = "last_quotes"
 ERRORLOG_BASENAME = "error_log_{date}.log"
 
+DAILY_CSV_BASENAME = "daily_prices_{start}_{end}.csv"
+DEFAULT_HISTORY_DAYS = 30
+YF_MARKET_SUFFIX = {
+    "tse": ".TW",
+    "otc": ".TWO",
+}
+
 # =========================
 # 錯誤紀錄器
 # =========================
@@ -121,6 +134,98 @@ MARKET_MAP: Dict[str, str] = {
 
 def decide_market(stock_code: str) -> str:
     return MARKET_MAP.get(stock_code, "tse")
+
+def to_yahoo_symbol(stock_code: str) -> str:
+    market = decide_market(stock_code)
+    suffix = YF_MARKET_SUFFIX.get(market, ".TW")
+    return f"{stock_code}{suffix}"
+
+
+def parse_date_arg(value: Optional[str], fallback: pd.Timestamp) -> pd.Timestamp:
+    if not value:
+        return fallback
+    try:
+        parsed = pd.to_datetime(value, format="%Y-%m-%d", errors="raise")
+    except Exception as exc:
+        ERR.log("error", value or "-", "parse_date_arg", "Invalid date format, expected YYYY-MM-DD", {"value": value, "error": str(exc)})
+        raise
+    return parsed
+
+
+def ensure_naive_timestamp(ts: pd.Timestamp) -> pd.Timestamp:
+    if ts.tzinfo is not None:
+        return ts.tz_convert(None)
+    return ts
+
+
+def fetch_daily_history(codes: List[str], start: Optional[str], end: Optional[str]) -> Tuple[pd.DataFrame, pd.Timestamp, pd.Timestamp]:
+    if yf is None:
+        raise RuntimeError("yfinance is required to fetch daily prices. Install it with pip install yfinance.")
+    if not codes:
+        now_ts = ensure_naive_timestamp(pd.Timestamp.now(tz=TAIPEI_TZ).normalize())
+        return pd.DataFrame(), now_ts, now_ts
+    end_default = pd.Timestamp.now(tz=TAIPEI_TZ).normalize()
+    end_ts = ensure_naive_timestamp(parse_date_arg(end, end_default))
+    start_default = end_default - pd.Timedelta(days=DEFAULT_HISTORY_DAYS)
+    start_ts = ensure_naive_timestamp(parse_date_arg(start, start_default))
+    if start_ts > end_ts:
+        raise ValueError(f"Start date {start_ts.date()} is after end date {end_ts.date()}.")
+    frames: List[pd.DataFrame] = []
+    for code in codes:
+        symbol = to_yahoo_symbol(code)
+        try:
+            data = yf.download(
+                symbol,
+                start=start_ts.strftime("%Y-%m-%d"),
+                end=(end_ts + pd.Timedelta(days=1)).strftime("%Y-%m-%d"),
+                progress=False,
+                auto_adjust=False,
+            )
+        except Exception as exc:
+            ERR.log("error", code, "yfinance_download", str(exc), {"symbol": symbol})
+            continue
+        if data.empty:
+            ERR.log(
+                "warn",
+                code,
+                "yfinance_download",
+                "No data returned",
+                {"symbol": symbol, "start": start_ts.strftime("%Y-%m-%d"), "end": end_ts.strftime("%Y-%m-%d")}
+            )
+            continue
+        data = data.reset_index()
+        data["code"] = code
+        data["symbol"] = symbol
+        frames.append(data[["Date", "code", "symbol", "Open", "High", "Low", "Close", "Adj Close", "Volume"]])
+    if not frames:
+        return pd.DataFrame(), start_ts, end_ts
+    history = pd.concat(frames, ignore_index=True)
+    history = history.rename(
+        columns={
+            "Date": "date",
+            "Open": "open",
+            "High": "high",
+            "Low": "low",
+            "Close": "close",
+            "Adj Close": "adj_close",
+            "Volume": "volume",
+        }
+    )
+    history["date"] = pd.to_datetime(history["date"]).dt.date
+    history.sort_values(["code", "date"], inplace=True)
+    history.reset_index(drop=True, inplace=True)
+    return history, start_ts, end_ts
+
+
+def write_daily_history(df: pd.DataFrame, folder: str, start_ts: pd.Timestamp, end_ts: pd.Timestamp) -> str:
+    if df.empty:
+        return ""
+    os.makedirs(folder, exist_ok=True)
+    start_tag = start_ts.strftime("%Y%m%d")
+    end_tag = end_ts.strftime("%Y%m%d")
+    path = os.path.join(folder, DAILY_CSV_BASENAME.format(start=start_tag, end=end_tag))
+    df.to_csv(path, index=False, encoding="utf-8-sig")
+    return path
 
 # =========================
 # 工具函式
@@ -267,6 +372,8 @@ def _self_tests():
     assert to_int("1,000") == 1000
     ts = parse_datetime("20250919","13:30:00")
     assert ts and "2025-09-19T13:30:00" in ts
+    assert to_yahoo_symbol("2330") == "2330.TW"
+    assert to_yahoo_symbol("3008") == "3008.TWO"
     item={"c":"3305","n":"昇貿","nf":"昇貿科技股份有限公司","ex":"tse","o":"116.5","h":"121","l":"113","y":"116","z":"118.5","u":"127.5","w":"104.5","v":"23415","d":"20250919","t":"13:30:00","a":"119_120_","b":"118_117_","f":"94_108_","g":"102_147_"}
     row=parse_msg_item(item)
     assert row["last"]==118.5 and row["bid_px_1"]==119.0 and row["ask_px_1"]==118.0
@@ -284,10 +391,29 @@ def main():
     parser.add_argument("--rounds",type=int,default=1)
     parser.add_argument("--outdir",type=str,default=OUTDIR)
     parser.add_argument("--selftest",action="store_true")
+    parser.add_argument("--daily",action="store_true",help="Fetch daily OHLC data via yfinance and exit")
+    parser.add_argument("--daily-start",type=str,help="Start date (YYYY-MM-DD) for daily fetch")
+    parser.add_argument("--daily-end",type=str,help="End date (YYYY-MM-DD) for daily fetch")
     args=parser.parse_args()
     if args.selftest:
         _self_tests(); return
     OUTDIR=args.outdir
+    if args.daily:
+        try:
+            history, start_ts, end_ts = fetch_daily_history(args.codes, args.daily_start, args.daily_end)
+        except Exception as exc:
+            ERR.log("error", "DAILY", "fetch_daily_history", str(exc))
+        else:
+            if history.empty:
+                print("No daily price data returned.")
+            else:
+                print("\n=== Daily Prices ===")
+                print(history.to_string(index=False))
+                saved_path = write_daily_history(history, OUTDIR, start_ts, end_ts)
+                if saved_path:
+                    print(f"\nSaved daily prices to {saved_path}")
+        ERR.flush_to_file(OUTDIR)
+        return
     for r in range(max(1,args.rounds) if args.interval>0 else 1):
         print(f"\n===== 進行第 {r+1}/{args.rounds} 輪 =====")
         run_once(args.codes)
