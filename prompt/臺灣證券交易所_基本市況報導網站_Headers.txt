@@ -1,0 +1,72 @@
+Request URL
+https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_3305.tw&json=1&delay=0&_=1758433440066&lang=zh_tw
+Request Method
+GET
+Status Code
+200 OK
+Remote Address
+163.29.17.179:443
+Referrer Policy
+strict-origin-when-cross-origin
+cache-control
+no-cache
+cache-control
+no-store, no-cache, must-revalidate
+connection
+keep-alive
+content-encoding
+gzip
+content-type
+text/html;charset=UTF-8
+date
+Sun, 21 Sep 2025 05:43:59 GMT
+expires
+Thu, 01 Jan 1970 00:00:00 GMT
+pragma
+no-cache
+set-cookie
+JSESSIONID=649BCF6A8F27C2D8C9412DE1CD19097B; Path=/; Secure; HttpOnly;stock; Secure; HttpOnly
+set-cookie
+TS0137f9d0=01b5f1af8fadfd538f0eefa342dda1c54fd3e64362b2546b987ebfebcabb37d09e8068097408030f7c7874eb1172be056eb538c1c76bfd2b8168b7d503ae75abadd1445ad8; Path=/; Secure; HttpOnly;
+set-cookie
+TS954983d4027=08f7fbc5cbab2000926e53d9260f97efc1980bfe64239c706d7efca9977f8415032c406f362aeb1c08a5c6be50113000134518c8a323f3eaf15376a14221ab3adb2c37152c8940869a67baec25c4a022719a7e20372de1be1ec9bdd6fd7afbc5; Path=/
+transfer-encoding
+chunked
+vary
+Accept-Encoding
+x-content-type-options
+nosniff
+x-frame-options
+DENY
+accept
+application/json, text/plain, */*
+accept-encoding
+gzip, deflate, br, zstd
+accept-language
+zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7
+cache-control
+no-cache,no-store
+connection
+keep-alive
+cookie
+_ga_LTMT28749H=GS2.1.s1758113046$o1$g1$t1758113113$j59$l0$h0; _ga_HF4MS5TH1P=GS2.1.s1758113276$o1$g1$t1758113312$j24$l0$h0; _ga=GA1.1.2038719556.1758103785; _ga_EJ69TXS89Q=GS2.1.s1758204192$o1$g1$t1758204265$j49$l0$h0; _ga_J2HVMN6FVP=GS2.1.s1758432810$o4$g1$t1758433273$j24$l0$h0; JSESSIONID=56F7B57C545FD6931C43EBA163D0AFD2; TS0137f9d0=01d397633f0a6354bb3a5fc2f6dae6a31f8ce764bc1e6e03337b5d2734a0972e65db86c75d37a7baa9a313d53d7b5e13c477a7248ed2199960a2263a06134b5660c2b206ab; TS954983d4027=0872eaf60fab20002b10bc7e747e5925b89ae5b2db95c0abdf77f0b04756eeca8bbd823429d2c5f708f8ab894611300029fcf47d3e40767bf7ac35d97cdcf3917c37efc6741c7ec957b7aeb6a1a4d7fb5438f713320fe5295ed7d57add51354a; _ga_F4L5BYPQDJ=GS2.1.s1758432994$o4$g1$t1758433440$j59$l0$h0
+host
+mis.twse.com.tw
+pragma
+no-cache
+referer
+https://mis.twse.com.tw/stock/detail-item?id=tse_3305.tw&ex=tse&lang=zhHant
+sec-ch-ua
+"Chromium";v="140", "Not=A?Brand";v="24", "Google Chrome";v="140"
+sec-ch-ua-mobile
+?0
+sec-ch-ua-platform
+"Windows"
+sec-fetch-dest
+empty
+sec-fetch-mode
+cors
+sec-fetch-site
+same-origin
+user-agent
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36
